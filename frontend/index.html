@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Mailer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d0d; --surface:#161616; --border:#2a2a2a;
+    --accent:#00e5a0; --accent2:#0077ff; --warn:#ff5c5c;
+    --text:#e8e8e8; --muted:#666;
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column}
+  header{border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;gap:16px}
+  .logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+  .logo span{color:var(--muted)}
+  nav{margin-left:auto;display:flex;gap:4px}
+  nav button{background:none;border:1px solid transparent;color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:500;padding:6px 14px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s;border-radius:4px}
+  nav button.active,nav button:hover{color:var(--text);border-color:var(--border);background:var(--surface)}
+  nav button.active{color:var(--accent);border-color:var(--accent)}
+  .tab{display:none;padding:48px 32px;max-width:760px;margin:0 auto;width:100%}
+  .tab.active{display:block}
+  .send-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+  .email-row{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .2s}
+  .email-row:focus-within{border-color:var(--accent)}
+  .email-row input{flex:1;background:var(--surface);border:none;color:var(--text);font-family:var(--mono);font-size:14px;padding:14px 18px;outline:none}
+  .email-row input::placeholder{color:var(--muted)}
+  .email-row button{background:var(--accent);border:none;color:#000;font-family:var(--mono);font-size:11px;font-weight:600;padding:0 22px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;transition:opacity .15s}
+  .email-row button:hover{opacity:.85}
+  .email-row button:disabled{opacity:.4;cursor:not-allowed}
+  .status{margin-top:14px;font-family:var(--mono);font-size:12px;min-height:18px;display:flex;align-items:center;gap:8px}
+  .status.ok{color:var(--accent)} .status.err{color:var(--warn)} .status.info{color:var(--accent2)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .dot.pulse{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #preview-card{margin-top:32px;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none;animation:slideIn .25s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .preview-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
+  .pill{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;background:#1a2e1a;color:var(--accent);padding:3px 10px;border-radius:20px;border:1px solid #00e5a022}
+  .to-addr{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto}
+  .preview-subject{padding:16px 20px 0;font-size:13px;font-weight:500;color:var(--muted);font-family:var(--mono)}
+  .preview-subject span{color:var(--text)}
+  .preview-subject[contenteditable="true"]{background:#1a1a1a;border:1px solid var(--border);border-radius:4px;padding:8px 12px;margin:16px 20px 0;outline:none}
+  .preview-subject[contenteditable="true"]:focus{border-color:var(--accent2)}
+  .preview-body{padding:16px 20px 20px;font-size:13.5px;line-height:1.7;color:#ccc;white-space:pre-wrap;font-family:var(--sans);max-height:320px;overflow-y:auto}
+  .preview-body::-webkit-scrollbar{width:4px}
+  .preview-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .preview-body[contenteditable="true"]{background:#1a1a1a;border:1px solid var(--border);border-radius:4px;outline:none}
+  .preview-body[contenteditable="true"]:focus{border-color:var(--accent2)}
+  .preview-footer{border-top:1px solid var(--border);padding:12px 20px;background:var(--surface);display:flex;align-items:center;gap:12px}
+  .countdown{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .countdown strong{color:var(--accent)}
+  .btn-cancel{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 14px;cursor:pointer;border-radius:4px;transition:all .15s}
+  .btn-cancel:hover{color:var(--warn);border-color:var(--warn)}
+  .btn-cancel:disabled{opacity:.3;cursor:not-allowed}
+  .section-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-grid.single{grid-template-columns:1fr}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+  .field input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:5px;outline:none;transition:border-color .15s}
+  .field input:focus{border-color:var(--accent2)}
+  .hint{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin-top:2px}
+  .hint a{color:var(--accent2);text-decoration:none}
+  .section-gap{margin-top:32px}
+  .cv-zone{border:1.5px dashed var(--border);border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+  .cv-zone:hover,.cv-zone.drag{border-color:var(--accent);background:#00e5a00a}
+  .cv-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .cv-icon{font-size:28px;margin-bottom:8px}
+  .cv-text{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
+  .cv-text strong{color:var(--accent)}
+  .cv-filename{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--accent);background:#00e5a011;display:inline-block;padding:4px 12px;border-radius:20px}
+  .btn-save{margin-top:24px;background:var(--accent2);border:none;color:#fff;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:11px 28px;border-radius:5px;cursor:pointer;transition:opacity .15s}
+  .btn-save:hover{opacity:.85}
+  .save-msg{display:inline-block;margin-left:14px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:0;transition:opacity .3s}
+  .save-msg.show{opacity:1}
+  .history-empty{text-align:center;padding:60px 0;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .toggle input:checked + .toggle-slider{transform:translateX(22px);background:var(--accent)}
+  .toggle input:checked ~ .toggle-slider{background:var(--accent)}
+  .toggle input:checked + .toggle-slider{transform:translateX(22px)}
+  #duplicate-warning{display:none;margin-top:10px;padding:12px 16px;background:#2a1a1a;border:1px solid var(--warn);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--warn);animation:slideIn .2s ease}
+  #duplicate-warning a{color:var(--accent);text-decoration:underline;cursor:pointer;margin-left:8px}
+  table{width:100%;border-collapse:collapse}
+  th{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:10px 14px;border-bottom:1px solid var(--border)}
+  td{font-family:var(--mono);font-size:12px;padding:12px 14px;border-bottom:1px solid #1e1e1e;color:#bbb}
+  td:first-child{color:var(--text)}
+  tr:hover td{background:var(--surface)}
+  .badge{background:#0d2a1a;color:var(--accent);font-size:9px;font-weight:600;letter-spacing:.1em;padding:2px 8px;border-radius:20px;border:1px solid #00e5a022;text-transform:uppercase}
+  .btn-remove{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .btn-remove:hover{color:var(--warn);border-color:var(--warn)}
+
+  @media (max-width: 600px) {
+    header{padding:14px 16px;flex-wrap:wrap;gap:12px}
+    nav{margin-left:0;width:100%;justify-content:center;margin-top:8px}
+    nav button{font-size:10px;padding:5px 10px}
+    .tab{padding:24px 16px}
+    .email-row{flex-direction:column;border-radius:6px}
+    .email-row input{border-radius:6px 6px 0 0;border-bottom:1px solid var(--border);padding:16px}
+    .email-row button{border-radius:0 0 6px 6px;padding:14px;font-size:12px}
+    .preview-header{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 16px}
+    .to-addr{margin-left:0;font-size:11px}
+    .preview-subject{padding:12px 16px 0;font-size:12px}
+    .preview-subject[contenteditable="true"]{margin:12px 16px 0;padding:8px 12px;font-size:12px}
+    .preview-body{padding:12px 16px 16px;font-size:13px;max-height:280px}
+    .preview-footer{flex-direction:column;align-items:flex-start;gap:10px;padding:12px 16px}
+    .btn-cancel{margin-left:0;width:100%;text-align:center;padding:10px}
+    .form-grid{grid-template-columns:1fr}
+    .section-title{font-size:9px}
+    .field input{font-size:14px;padding:12px 14px}
+    .cv-zone{padding:20px}
+    .cv-text{font-size:11px}
+    .btn-save{width:100%;padding:14px;font-size:12px}
+    .save-msg{margin-left:0;margin-top:8px;display:block;text-align:center}
+    table{font-size:11px}
+    th,td{padding:8px 10px}
+    .badge{font-size:8px;padding:2px 6px}
+    .btn-remove{font-size:9px;padding:2px 8px}
+    .status{font-size:11px}
+    .countdown{font-size:10px}
+    #duplicate-warning{font-size:11px;padding:10px 12px}
+  }
+
+  @media (max-width: 400px) {
+    header{padding:12px}
+    .tab{padding:16px 12px}
+    .email-row input{padding:14px;font-size:13px}
+    .email-row button{padding:12px;font-size:11px}
+    .preview-body{font-size:12px;max-height:240px}
+    .field input{font-size:13px;padding:10px 12px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Job<span>/</span>Mailer</div>
+  <nav>
+    <button class="active" onclick="showTab('send',this)">Send</button>
+    <button onclick="showTab('settings',this)">Settings</button>
+    <button onclick="showTab('history',this);loadHistory()">History</button>
+  </nav>
+</header>
+
+<!-- SEND -->
+<div class="tab active" id="tab-send">
+  <div class="send-label">Recipient email — press Enter to generate &amp; send</div>
+  <div class="email-row">
+    <input type="email" id="email-input" placeholder="hiring@company.com" autocomplete="off">
+    <button id="send-btn" onclick="handleSend()">Send ↵</button>
+  </div>
+  <div id="duplicate-warning"></div>
+  <div class="status" id="status-bar"></div>
+  <div id="preview-card">
+    <div class="preview-header">
+      <div class="pill">AI Preview</div>
+      <div class="to-addr" id="preview-to"></div>
+    </div>
+    <div class="preview-subject">Subject: <span id="preview-subject"></span></div>
+    <div class="preview-body" id="preview-body"></div>
+    <div class="preview-footer">
+      <div class="countdown" id="countdown-text"></div>
+      <button class="btn-cancel" id="cancel-btn" onclick="cancelSend()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="tab" id="tab-settings">
+  <div class="section-title">Sending Mode</div>
+  <div class="form-grid single">
+    <div class="field">
+      <label>Auto-Send</label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label class="toggle" style="position:relative;width:48px;height:26px;background:var(--border);border-radius:13px;cursor:pointer;transition:background .2s">
+          <input type="checkbox" id="cfg-auto-send" style="opacity:0;width:0;height:0">
+          <span class="toggle-slider" style="position:absolute;top:2px;left:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 2px 4px #0004"></span>
+        </label>
+        <span id="auto-send-label" style="font-family:var(--mono);font-size:12px;color:var(--muted)">OFF (manual preview)</span>
+      </div>
+      <div class="hint">ON = AI generates & sends automatically. OFF = preview then click Send.</div>
+    </div>
+  </div>
+  <div class="section-gap"></div>
+  <div class="section-title">Your Info</div>
+  <div class="form-grid">
+    <div class="field">
+      <label>Your Name</label>
+      <input type="text" id="cfg-name" placeholder="Ahamed Basith">
+    </div>
+    <div class="field">
+      <label>Role Applying For</label>
+      <input type="text" id="cfg-role" placeholder="Senior Web Developer">
+    </div>
+  </div>
+  <div class="section-gap"></div>
+  <div class="section-title">Gmail</div>
+  <div class="form-grid">
+    <div class="field">
+      <label>Gmail Address</label>
+      <input type="email" id="cfg-gmail" placeholder="you@gmail.com" readonly>
+    </div>
+    <div class="field">
+      <label>App Password</label>
+      <input type="password" id="cfg-pass" placeholder="••••••••" readonly>
+      <div class="hint">Set in .env file (GMAIL_USER, GMAIL_APP_PASSWORD)</div>
+    </div>
+  </div>
+  <div class="section-gap"></div>
+  <div class="section-title">AI — OpenAI Compatible</div>
+  <div class="form-grid single">
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="cfg-groq" placeholder="••••••••" readonly>
+      <div class="hint">Set in .env file (GROQ_API_KEY)</div>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field">
+      <label>Base URL</label>
+      <input type="text" id="cfg-openai-url" placeholder="https://api.groq.com/openai/v1">
+    </div>
+    <div class="field">
+      <label>Model</label>
+      <input type="text" id="cfg-openai-model" placeholder="llama-3.3-70b-versatile">
+    </div>
+  </div>
+  <div class="hint">Works with Groq, OpenAI, Ollama, OpenRouter, etc. Default: Groq.</div>
+  <div class="section-gap"></div>
+  <div class="section-title">Supabase (Duplicate Prevention)</div>
+  <div class="form-grid">
+    <div class="field">
+      <label>Project URL</label>
+      <input type="text" id="cfg-sb-url" placeholder="https://xxx.supabase.co" readonly>
+    </div>
+    <div class="field">
+      <label>Anon/Service Key</label>
+      <input type="password" id="cfg-sb-key" placeholder="••••••••" readonly>
+      <div class="hint">Set in .env file (SUPABASE_URL, SUPABASE_KEY)</div>
+    </div>
+  </div>
+  <div class="section-gap"></div>
+  <div class="section-title">CV / Resume</div>
+  <div class="cv-zone" id="cv-zone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleDrop(event)">
+    <input type="file" accept=".pdf,.txt,.md" onchange="uploadCV(this.files[0])">
+    <div class="cv-icon">📄</div>
+    <div class="cv-text"><strong>Click to upload</strong> or drag &amp; drop<br>PDF, TXT, or MD</div>
+    <div class="cv-filename" id="cv-filename" style="display:none"></div>
+  </div>
+  <div>
+    <button class="btn-save" onclick="saveConfig()">Save Settings</button>
+    <span class="save-msg" id="save-msg">✓ Saved</span>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="tab" id="tab-history">
+  <div class="section-title">Sent Emails</div>
+  <div id="history-content"><div class="history-empty">Switch to this tab to load history.</div></div>
+</div>
+
+<script>
+const API = '';
+let countdownTimer = null;
+let pendingPayload = null;
+let cancelled = false;
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setStatus(msg, type='info') {
+  const el = document.getElementById('status-bar');
+  el.className = 'status ' + type;
+  el.innerHTML = `<div class="dot ${type==='info'?'pulse':''}"></div>${msg}`;
+}
+function clearStatus() {
+  const el = document.getElementById('status-bar');
+  el.className = 'status'; el.innerHTML = '';
+}
+
+document.getElementById('email-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleSend();
+});
+
+document.getElementById('email-input').addEventListener('blur', async e => {
+  const email = e.target.value.trim();
+  if (!email || !email.includes('@')) return;
+  try {
+    const res = await fetch(API + '/api/check-email/' + encodeURIComponent(email));
+    const data = await res.json();
+    if (data.exists) showDuplicateWarning(email);
+  } catch {}
+});
+
+function showDuplicateWarning(email) {
+  const el = document.getElementById('duplicate-warning');
+  el.innerHTML = `⚠ This email (${email}) was already sent. <a onclick="removeDuplicate('${email}')">Remove from history &amp; send again</a>`;
+  el.style.display = 'block';
+}
+
+async function removeDuplicate(email) {
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await fetch(API + '/api/history/' + encodeURIComponent(email), {method: 'DELETE'});
+    document.getElementById('duplicate-warning').style.display = 'none';
+    setStatus('Removed from history — you can now send again', 'ok');
+  } catch {
+    setStatus('Failed to remove', 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Send ↵';
+}
+
+function hideDuplicateWarning() {
+  document.getElementById('duplicate-warning').style.display = 'none';
+}
+
+async function handleSend() {
+  const email = document.getElementById('email-input').value.trim();
+  if (!email || !email.includes('@')) { setStatus('Enter a valid email', 'err'); return; }
+  hideDuplicateWarning();
+  clearPreview();
+  cancelled = false;
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = '...';
+  setStatus('Generating with Groq / Llama...', 'info');
+  try {
+    const res = await fetch(API + '/api/generate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus(res.status===409 ? '⊘ Already sent to this address' : '✗ '+data.detail, 'err');
+      btn.disabled=false; btn.textContent='Send ↵'; return;
+    }
+    pendingPayload = {email, subject:data.subject, body:data.body};
+    const autoSend = document.getElementById('cfg-auto-send').checked;
+    showPreview(email, data.subject, data.body);
+    if (autoSend) {
+      setStatus('Auto-sending in 3s...', 'info');
+      setTimeout(() => doSend(btn), 3000);
+    } else {
+      setStatus('Email ready — edit if needed, then click Send', 'info');
+    }
+  } catch(err) {
+    setStatus('✗ Server error — is backend running?', 'err');
+    btn.disabled=false; btn.textContent='Send ↵';
+  }
+}
+
+function showPreview(email, subject, body) {
+  document.getElementById('preview-to').textContent = email;
+  const subjectEl = document.getElementById('preview-subject');
+  subjectEl.innerHTML = 'Subject: <span>' + subject + '</span>';
+  const bodyEl = document.getElementById('preview-body');
+  bodyEl.textContent = body;
+  const autoSend = document.getElementById('cfg-auto-send').checked;
+  bodyEl.contentEditable = !autoSend;
+  const subjectSpan = subjectEl.querySelector('span');
+  subjectSpan.contentEditable = !autoSend;
+  if (!autoSend) bodyEl.focus();
+  
+  const countdown = document.getElementById('countdown-text');
+  const cancelBtn = document.getElementById('cancel-btn');
+  
+  if (autoSend) {
+    countdown.style.display = 'inline';
+    cancelBtn.style.display = 'inline-block';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = cancelSend;
+  } else {
+    countdown.style.display = 'none';
+    cancelBtn.style.display = 'inline-block';
+    cancelBtn.textContent = 'Send';
+    cancelBtn.onclick = () => doSend(document.getElementById('send-btn'));
+  }
+  
+  document.getElementById('preview-card').style.display = 'block';
+}
+
+function clearPreview() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  document.getElementById('preview-card').style.display = 'none';
+}
+
+function startCountdown(btn) {
+  let secs = 4;
+  const cd = document.getElementById('countdown-text');
+  document.getElementById('cancel-btn').disabled = false;
+  function tick() {
+    if (cancelled) return;
+    cd.innerHTML = `Sending in <strong>${secs}</strong>s`;
+    if (secs <= 0) { clearInterval(countdownTimer); doSend(btn); return; }
+    secs--;
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function cancelSend() {
+  cancelled = true;
+  clearInterval(countdownTimer);
+  clearPreview();
+  setStatus('Cancelled.', 'err');
+  const btn = document.getElementById('send-btn');
+  btn.disabled=false; btn.textContent='Send ↵';
+}
+
+function clearPreview() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  document.getElementById('preview-card').style.display = 'none';
+  document.getElementById('cancel-btn').onclick = cancelSend;
+}
+
+async function doSend(btn) {
+  document.getElementById('cancel-btn').disabled = true;
+  document.getElementById('countdown-text').textContent = 'Sending...';
+  setStatus('Sending via Gmail SMTP...', 'info');
+  try {
+    const autoSend = document.getElementById('cfg-auto-send').checked;
+    const payload = autoSend ? pendingPayload : {
+      ...pendingPayload,
+      subject: document.getElementById('preview-subject').querySelector('span').textContent,
+      body: document.getElementById('preview-body').textContent
+    };
+    const res = await fetch(API + '/api/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus('✗ Send failed: ' + (data.detail||'Unknown'), 'err');
+    } else {
+      setStatus('✓ Sent successfully to ' + payload.email, 'ok');
+      document.getElementById('email-input').value = '';
+      document.getElementById('countdown-text').innerHTML = '✓ Delivered';
+    }
+  } catch(err) {
+    setStatus('✗ Network error during send', 'err');
+  }
+  btn.disabled=false; btn.textContent='Send ↵';
+}
+
+async function loadConfig() {
+  try {
+    const cfg = await fetch(API+'/api/config').then(r=>r.json());
+    const s = (id, val) => { if(val) document.getElementById(id).value = val; };
+    s('cfg-gmail', cfg.gmail_user);
+    s('cfg-pass',  cfg.gmail_app_password_display || '••••••••');
+    s('cfg-groq',  cfg.groq_api_key_display || '••••••••');
+    s('cfg-openai-url', cfg.openai_base_url);
+    s('cfg-openai-model', cfg.openai_model);
+    s('cfg-sb-url', cfg.supabase_url);
+    s('cfg-sb-key', cfg.supabase_key_display || '••••••••');
+    s('cfg-name',  cfg.your_name);
+    s('cfg-role',  cfg.job_role);
+    const autoSend = document.getElementById('cfg-auto-send');
+    if (cfg.auto_send) { autoSend.checked = true; updateAutoSendLabel(true); }
+    else { autoSend.checked = false; updateAutoSendLabel(false); }
+    if (cfg.cv_filename) {
+      const fn = document.getElementById('cv-filename');
+      fn.textContent = '📎 ' + cfg.cv_filename;
+      fn.style.display = 'inline-block';
+    }
+  } catch {}
+}
+
+async function saveConfig() {
+  const g = id => document.getElementById(id).value.trim();
+  const res = await fetch(API+'/api/config', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      your_name: g('cfg-name'),
+      job_role: g('cfg-role') || 'Software Engineer',
+      auto_send: document.getElementById('cfg-auto-send').checked,
+      openai_base_url: g('cfg-openai-url') || 'https://api.groq.com/openai/v1',
+      openai_model: g('cfg-openai-model') || 'llama-3.3-70b-versatile'
+    })
+  });
+  if (res.ok) {
+    const msg = document.getElementById('save-msg');
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 2500);
+  }
+}
+
+function updateAutoSendLabel(on) {
+  const label = document.getElementById('auto-send-label');
+  label.textContent = on ? 'ON (auto-send)' : 'OFF (manual preview)';
+  label.style.color = on ? 'var(--accent)' : 'var(--muted)';
+}
+
+document.getElementById('cfg-auto-send').addEventListener('change', e => {
+  updateAutoSendLabel(e.target.checked);
+  saveConfig();
+});
+
+async function uploadCV(file) {
+  if (!file) return;
+  const zone = document.getElementById('cv-zone');
+  zone.classList.add('drag');
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const data = await fetch(API+'/api/upload-cv', {method:'POST',body:fd}).then(r=>r.json());
+    if (data.ok) {
+      const fn = document.getElementById('cv-filename');
+      fn.textContent = '📎 ' + data.filename;
+      fn.style.display = 'inline-block';
+    }
+  } catch {}
+  zone.classList.remove('drag');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('cv-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadCV(file);
+}
+
+async function deleteHistory(btn) {
+  const email = btn.dataset.email;
+  if (!confirm('Remove ' + email + '?\nThis allows sending to this address again.')) return;
+  btn.textContent = '...';
+  btn.disabled = true;
+  try {
+    await fetch(API + '/api/history/' + encodeURIComponent(email), {method: 'DELETE'});
+    btn.closest('tr').remove();
+    const tbody = document.querySelector('#history-content tbody');
+    if (tbody && !tbody.children.length) {
+      document.getElementById('history-content').innerHTML = '<div class="history-empty">No emails sent yet.</div>';
+    }
+  } catch {
+    btn.textContent = 'Remove';
+    btn.disabled = false;
+  }
+}
+
+async function loadHistory() {
+  const el = document.getElementById('history-content');
+  el.innerHTML = '<div class="history-empty">Loading...</div>';
+  try {
+    const {emails} = await fetch(API + '/api/history').then(r => r.json());
+    if (!emails.length) {
+      el.innerHTML = '<div class="history-empty">No emails sent yet.</div>';
+      return;
+    }
+    const rows = emails.map(e => {
+      const d = new Date(e.created_at);
+      const fmt = d.toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const safeEmail = e.email.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      const subject = (e.subject || '—').replace(/</g,'&lt;');
+      return '<tr>'
+        + '<td>' + safeEmail + '</td>'
+        + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + subject + '</td>'
+        + '<td>' + fmt + '</td>'
+        + '<td><span class="badge">Sent</span></td>'
+        + '<td><button class="btn-remove" data-email="' + safeEmail + '" onclick="deleteHistory(this)">Remove</button></td>'
+        + '</tr>';
+    }).join('');
+    el.innerHTML = '<table><thead><tr><th>Email</th><th>Subject</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } catch {
+    el.innerHTML = '<div class="history-empty">Could not load — check Supabase config.</div>';
+  }
+}
+
+
+loadConfig();
+</script>
+</body>
+</html>

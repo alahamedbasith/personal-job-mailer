@@ -1,0 +1,7 @@
+{
+  "your_name": "Ahamed Basith",
+  "job_role": "Data Analyst",
+  "auto_send": false,
+  "openai_base_url": "https://api.groq.com/openai/v1",
+  "openai_model": "llama-3.3-70b-versatile"
+}
