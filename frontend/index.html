@@ -276,6 +276,7 @@
 <script>
 const API = '';
 let countdownTimer = null;
+let autoSendTimer = null;
 let pendingPayload = null;
 let cancelled = false;
 
@@ -357,7 +358,7 @@ async function handleSend() {
     showPreview(email, data.subject, data.body);
     if (autoSend) {
       setStatus('Auto-sending in 3s...', 'info');
-      setTimeout(() => doSend(btn), 3000);
+      autoSendTimer = setTimeout(() => doSend(btn), 3000);
     } else {
       setStatus('Email ready — edit if needed, then click Send', 'info');
     }
@@ -400,6 +401,9 @@ function showPreview(email, subject, body) {
 function clearPreview() {
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
   document.getElementById('preview-card').style.display = 'none';
+  document.getElementById('cancel-btn').onclick = cancelSend;
+  document.getElementById('cancel-btn').textContent = 'Cancel';
+  document.getElementById('cancel-btn').disabled = false;
 }
 
 function startCountdown(btn) {
@@ -419,7 +423,9 @@ function startCountdown(btn) {
 function cancelSend() {
   cancelled = true;
   clearInterval(countdownTimer);
+  if (autoSendTimer) { clearTimeout(autoSendTimer); autoSendTimer = null; }
   clearPreview();
+
   setStatus('Cancelled.', 'err');
   const btn = document.getElementById('send-btn');
   btn.disabled=false; btn.textContent='Send ↵';
@@ -427,14 +433,18 @@ function cancelSend() {
 
 function clearPreview() {
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  if (autoSendTimer) { clearTimeout(autoSendTimer); autoSendTimer = null; }
   document.getElementById('preview-card').style.display = 'none';
   document.getElementById('cancel-btn').onclick = cancelSend;
+  document.getElementById('cancel-btn').textContent = 'Cancel';
+  document.getElementById('cancel-btn').disabled = false;
 }
 
 async function doSend(btn) {
   document.getElementById('cancel-btn').disabled = true;
   document.getElementById('countdown-text').textContent = 'Sending...';
   setStatus('Sending via Gmail SMTP...', 'info');
+  let success = false;
   try {
     const autoSend = document.getElementById('cfg-auto-send').checked;
     const payload = autoSend ? pendingPayload : {
@@ -450,6 +460,7 @@ async function doSend(btn) {
     if (!res.ok) {
       setStatus('✗ Send failed: ' + (data.detail||'Unknown'), 'err');
     } else {
+      success = true;
       setStatus('✓ Sent successfully to ' + payload.email, 'ok');
       document.getElementById('email-input').value = '';
       document.getElementById('countdown-text').innerHTML = '✓ Delivered';
@@ -458,6 +469,7 @@ async function doSend(btn) {
     setStatus('✗ Network error during send', 'err');
   }
   btn.disabled=false; btn.textContent='Send ↵';
+  if (success) clearPreview();
 }
 
 async function loadConfig() {
