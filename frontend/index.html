@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Personal Mailer</title>
+<title>Personal Job Mailer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -94,6 +94,8 @@
   .btn-remove:hover{color:var(--warn);border-color:var(--warn)}
 
   @media (max-width: 600px) {
+    body .tab + div{padding:24px 16px 16px!important;font-size:9px!important}
+    body .tab + div div{font-size:9px!important;gap:4px 12px!important}
     header{padding:14px 16px;flex-wrap:wrap;gap:12px}
     nav{margin-left:0;width:100%;justify-content:center;margin-top:8px}
     nav button{font-size:10px;padding:5px 10px}
@@ -136,7 +138,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">Personal<span>/</span>Mailer</div>
+  <div class="logo">Personal<span>/</span>Job Mailer</div>
   <nav>
     <button class="active" onclick="showTab('send',this)">Send</button>
     <button onclick="showTab('settings',this)">Settings</button>
@@ -262,6 +264,13 @@
 <div class="tab" id="tab-history">
   <div class="section-title">Sent Emails</div>
   <div id="history-content"><div class="history-empty">Switch to this tab to load history.</div></div>
+</div>
+
+<div style="margin-top:auto;padding:32px 32px 24px;text-align:center;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);line-height:2">
+  <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 20px;margin-bottom:10px">
+    <span>FastAPI</span><span>·</span><span>Python</span><span>·</span><span>OpenAI API</span><span>·</span><span>Groq</span><span>·</span><span>Supabase</span><span>·</span><span>SMTP</span>
+  </div>
+  <div>developed by <strong style="color:var(--accent)">Ahamed Basith</strong></div>
 </div>
 
 <script>
