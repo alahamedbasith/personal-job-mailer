@@ -334,13 +334,14 @@ function hideDuplicateWarning() {
   document.getElementById('duplicate-warning').style.display = 'none';
 }
 
-async function handleSend() {
+async function handleSend(btn) {
   const email = document.getElementById('email-input').value.trim();
   if (!email || !email.includes('@')) { setStatus('Enter a valid email', 'err'); return; }
   hideDuplicateWarning();
   clearPreview();
   cancelled = false;
-  const btn = document.getElementById('send-btn');
+  pendingPayload = null;
+  btn = btn || document.getElementById('send-btn');
   btn.disabled = true; btn.textContent = '...';
   setStatus('Generating with Groq / Llama...', 'info');
   try {
@@ -351,7 +352,9 @@ async function handleSend() {
     const data = await res.json();
     if (!res.ok) {
       setStatus(res.status===409 ? '⊘ Already sent to this address' : '✗ '+data.detail, 'err');
-      btn.disabled=false; btn.textContent='Send ↵'; return;
+      btn.disabled=false; btn.textContent='Send ↵';
+      pendingPayload = null;
+      return;
     }
     pendingPayload = {email, subject:data.subject, body:data.body};
     const autoSend = document.getElementById('cfg-auto-send').checked;
@@ -365,6 +368,7 @@ async function handleSend() {
   } catch(err) {
     setStatus('✗ Server error — is backend running?', 'err');
     btn.disabled=false; btn.textContent='Send ↵';
+    pendingPayload = null;
   }
 }
 
@@ -469,7 +473,10 @@ async function doSend(btn) {
     setStatus('✗ Network error during send', 'err');
   }
   btn.disabled=false; btn.textContent='Send ↵';
-  if (success) clearPreview();
+  if (success) {
+    clearPreview();
+    pendingPayload = null;
+  }
 }
 
 async function loadConfig() {
